@@ -1,2 +1,41 @@
-Sample Report — placeholder
-Content added after domain selection in STEP 0.2
+IT Asset Management — Quarterly Review Report
+Q1 2024 | Prepared by: IT Operations Team
+
+EXECUTIVE SUMMARY
+─────────────────
+Total assets under management: 15
+Assets currently in use: 10
+Assets available for allocation: 3
+Assets in maintenance or retired: 2
+
+Total asset portfolio value: USD 34,386.00
+
+ASSET BREAKDOWN BY CATEGORY
+─────────────────────────────
+Laptops   : 6 units  (4 in use, 1 available, 1 in maintenance)
+Monitors  : 3 units  (2 in use, 1 available)
+Phones    : 3 units  (2 in use, 1 retired)
+Servers   : 3 units  (2 in use, 1 available)
+
+OPEN HIGH-PRIORITY TICKETS
+────────────────────────────
+Ticket #1  : Laptop not booting after OS update          — Asset #6,  raised by Arjun Nair
+Ticket #4  : Server disk usage above 90 percent          — Asset #13, raised by Rohan Mehta
+Ticket #7  : Server RAM upgrade required urgently        — Asset #14, raised by Rohan Mehta
+Ticket #9  : MacBook display flickering under load       — Asset #2,  raised by Arjun Nair
+Ticket #12 : Laptop assigned but not yet configured      — Asset #4,  raised by Anita Desai
+
+LICENSE ALERTS
+───────────────
+Datadog Pro        : expires 2024-04-15  — 19/25 seats used   *** EXPIRING SOON ***
+MS Office 365      : expires 2024-05-01  — 290/300 seats used *** EXPIRING SOON + NEAR CAPACITY ***
+Jira Software      : expires 2024-06-30  — 87/100 seats used
+Figma Organisation : expires 2024-07-01  — 31/50 seats used
+Slack Business+    : expires 2024-08-15  — 178/200 seats used
+
+RECOMMENDATIONS
+────────────────
+1. Renew Datadog Pro immediately — expires in under 90 days
+2. Renew MS Office 365 — expires soon and at 97% seat capacity
+3. Procure 1 additional laptop — Asset #6 in maintenance, #4 unassigned but unconfigured
+4. Resolve server tickets #4 and #7 before end of quarter
