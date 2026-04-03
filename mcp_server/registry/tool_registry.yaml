@@ -1,0 +1,205 @@
+# ============================================================
+# MCP Tool Server — Tool Registry
+# All tools exposed via MCP are declared here.
+# The registry loader validates this file at server startup.
+# To add a new tool: add an entry here — zero agent code changes.
+# ============================================================
+
+version: "1.0"
+
+tools:
+
+  - name: sql_query
+    description: >
+      Execute a read-only SQL SELECT statement against the enterprise
+      procurement database. Returns rows as a list of JSON objects.
+      Use this tool to query vendors, purchase orders, contracts,
+      line items, approval workflows, and spend categories.
+      Never modifies data — only SELECT statements are permitted.
+    enabled: true
+    auth_required: true
+    handler: mcp_server.tool_handlers.sql_tool.run_sql_query
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          description: >
+            A valid SQL SELECT statement. Must not contain INSERT,
+            UPDATE, DELETE, DROP, TRUNCATE, or any DDL/DML keywords.
+        limit:
+          type: integer
+          description: >
+            Maximum number of rows to return. Defaults to 50.
+            Maximum allowed value is 200.
+          default: 50
+      required:
+        - query
+    output_schema:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+        row_count:
+          type: integer
+        execution_time_ms:
+          type: number
+        query_echoed:
+          type: string
+    metadata:
+      category: sql
+      timeout_seconds: 10
+      rate_limit_per_min: 30
+      read_only: true
+
+  - name: web_search
+    description: >
+      Search the web for current information using the Tavily search API.
+      Use this tool when the question requires up-to-date information
+      beyond the database — for example, current commodity prices,
+      vendor news, regulatory updates, or market intelligence.
+      Returns titles, URLs, and content snippets ranked by relevance.
+    enabled: true
+    auth_required: true
+    handler: mcp_server.tool_handlers.search_tool.run_web_search
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          description: >
+            The search query. Be specific — include vendor names,
+            commodity types, or regulatory body names for best results.
+        max_results:
+          type: integer
+          description: Number of results to return. Defaults to 5. Max 10.
+          default: 5
+        search_depth:
+          type: string
+          description: >
+            'basic' for fast results, 'advanced' for deeper content
+            extraction. Defaults to 'basic'.
+          enum: [basic, advanced]
+          default: basic
+      required:
+        - query
+    output_schema:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              url:
+                type: string
+              content:
+                type: string
+              score:
+                type: number
+        result_count:
+          type: integer
+    metadata:
+      category: web
+      timeout_seconds: 15
+      rate_limit_per_min: 20
+
+  - name: filesystem_search
+    description: >
+      Search for files in the allowed workspace directory by filename
+      pattern or text content. Use this tool to locate procurement
+      documents, templates, or reports stored in the server workspace.
+      Access is restricted to the configured WORKSPACE_PATH only.
+    enabled: true
+    auth_required: true
+    handler: mcp_server.tool_handlers.filesystem_tool.run_filesystem_search
+    input_schema:
+      type: object
+      properties:
+        pattern:
+          type: string
+          description: >
+            Filename glob pattern to search for.
+            Examples: '*.pdf', 'PO-2024-*.xlsx', 'vendor_report*'
+        content_query:
+          type: string
+          description: >
+            Optional text string to search within file contents.
+            Only searches plain text and CSV files.
+        max_results:
+          type: integer
+          description: Maximum number of files to return. Defaults to 20.
+          default: 20
+      required:
+        - pattern
+    output_schema:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              filename:
+                type: string
+              path:
+                type: string
+              size_bytes:
+                type: integer
+              modified_at:
+                type: string
+        file_count:
+          type: integer
+    metadata:
+      category: filesystem
+      timeout_seconds: 10
+      rate_limit_per_min: 30
+      sandbox_path: /workspace
+
+  - name: rest_api_search
+    description: >
+      Query a configured external REST API endpoint and return the
+      parsed JSON response. Use this tool to fetch data from external
+      procurement systems, ERP APIs, or supplier portals that are not
+      in the local database.
+      Supports GET requests with optional query parameters.
+    enabled: true
+    auth_required: true
+    handler: mcp_server.tool_handlers.rest_tool.run_rest_api_search
+    input_schema:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          description: >
+            The API endpoint path relative to the configured BASE_API_URL.
+            Example: '/suppliers/search' or '/purchase-orders/status'
+        params:
+          type: object
+          description: >
+            Optional key-value query parameters to append to the request.
+            Example: {"status": "active", "country": "India"}
+        headers:
+          type: object
+          description: >
+            Optional additional HTTP headers. Do not include Authorization
+            — that is handled by the server middleware.
+      required:
+        - endpoint
+    output_schema:
+      type: object
+      properties:
+        status_code:
+          type: integer
+        data:
+          type: object
+        response_time_ms:
+          type: number
+    metadata:
+      category: rest
+      timeout_seconds: 20
+      rate_limit_per_min: 15

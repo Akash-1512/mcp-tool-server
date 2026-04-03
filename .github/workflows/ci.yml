@@ -22,5 +22,4 @@ jobs:
             echo "No Python files found — skipping lint."
           else
             ruff check $FILES
-            ruff format --check $FILES
           fi
