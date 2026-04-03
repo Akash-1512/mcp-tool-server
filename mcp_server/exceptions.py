@@ -44,3 +44,69 @@ class RegistryLoadError(MCPToolServerError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message, mcp_error_code=-32603)
+
+# ─── Tool Dispatch Exceptions ─────────────────────────────────────────────────
+
+class ToolNotFoundError(MCPToolServerError):
+    """Raised when tools/call receives a tool name not in the registry.
+
+    Maps to JSON-RPC -32601 (method not found). Returns isError: true
+    in the MCP response body — not an HTTP error code.
+    """
+
+    def __init__(self, tool_name: str) -> None:
+        super().__init__(
+            f"Tool '{tool_name}' not found in registry",
+            mcp_error_code=-32601,
+        )
+        self.tool_name = tool_name
+
+
+class ToolInputValidationError(MCPToolServerError):
+    """Raised when tool arguments fail schema validation.
+
+    Maps to JSON-RPC -32602 (invalid params). The tool handler raises this
+    before executing any logic — e.g. missing required field, wrong type.
+    """
+
+    def __init__(self, tool_name: str, message: str) -> None:
+        super().__init__(
+            f"Invalid input for tool '{tool_name}': {message}",
+            mcp_error_code=-32602,
+        )
+        self.tool_name = tool_name
+
+
+class ToolExecutionError(MCPToolServerError):
+    """Raised when a tool handler fails during execution.
+
+    Distinct from ToolInputValidationError — input was valid but execution
+    failed (e.g. SQLite query error, file not found, network timeout).
+    Returns isError: true in MCP response — not HTTP 500.
+    """
+
+    def __init__(self, tool_name: str, message: str) -> None:
+        super().__init__(
+            f"Tool '{tool_name}' execution failed: {message}",
+            mcp_error_code=-32603,
+        )
+        self.tool_name = tool_name
+
+
+# ─── SQL Tool Exceptions ──────────────────────────────────────────────────────
+
+class SQLQueryForbiddenError(ToolExecutionError):
+    """Raised when sql_query_tool receives a non-SELECT statement.
+
+    We only permit SELECT — no INSERT, UPDATE, DELETE, DROP.
+    This is enforced before the query reaches SQLite.
+    """
+
+    def __init__(self, received_statement: str) -> None:
+        super().__init__(
+            tool_name="sql_query_tool",
+            message=(
+                f"Only SELECT statements are permitted. "
+                f"Received: {received_statement[:50]}"
+            ),
+        )
