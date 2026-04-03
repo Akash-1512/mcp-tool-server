@@ -1,3 +1,16 @@
-placeholder,columns
-added,after
-domain,selection
+category,asset_id,name,status,assigned_to_employee_id,department,purchase_date,cost_usd
+Laptop,1,MacBook Pro 16",in_use,2,Engineering,2023-03-15,2499.00
+Laptop,2,MacBook Pro 16",in_use,3,Engineering,2023-03-15,2499.00
+Laptop,3,MacBook Air M2,in_use,5,Finance,2023-06-01,1299.00
+Laptop,4,MacBook Air M2,available,,, 2023-06-01,1299.00
+Laptop,5,Dell XPS 15,in_use,10,Engineering,2022-11-20,1799.00
+Laptop,6,Dell XPS 15,maintenance,,,2022-11-20,1799.00
+Monitor,7,LG UltraWide 34",in_use,2,Engineering,2023-01-10,899.00
+Monitor,8,LG UltraWide 34",in_use,3,Engineering,2023-01-10,899.00
+Monitor,9,LG UltraWide 34",available,,,2023-01-10,899.00
+Phone,10,iPhone 14 Pro,in_use,4,Finance,2023-09-20,999.00
+Phone,11,iPhone 14 Pro,in_use,8,HR,2023-09-20,999.00
+Phone,12,iPhone 14 Pro,retired,,,2021-09-20,999.00
+Server,13,Dell PowerEdge R750,in_use,1,Engineering,2022-05-01,8999.00
+Server,14,Dell PowerEdge R750,in_use,1,Engineering,2022-05-01,8999.00
+Server,15,Synology NAS DS923+,available,,,2023-07-15,1499.00
