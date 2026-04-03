@@ -28,7 +28,7 @@ jobs:
 
       - name: Start services
         if: steps.server_check.outputs.server_exists == 'true'
-        run: docker compose -f deploy/docker-compose.ci.yml up --build -d
+        run: docker compose -f deploy/docker-compose.yml up --build -d
 
       - name: Wait for MCP server health
         if: steps.server_check.outputs.server_exists == 'true'
@@ -47,4 +47,14 @@ jobs:
 
       - name: Tear down
         if: always() && steps.server_check.outputs.server_exists == 'true'
-        run: docker compose -f deploy/docker-compose.ci.yml down -v
+        run: docker compose -f deploy/docker-compose.yml down -v
+
+      - name: Check if integration suite is ready
+        id: server_check
+        run: |
+          if [ -f "tests/integration/test_mcp_handshake.py" ] && [ -f "deploy/docker-compose.ci.yml" ]; then
+            echo "server_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "server_exists=false" >> $GITHUB_OUTPUT
+            echo "Integration suite not ready — skipping."
+          fi
