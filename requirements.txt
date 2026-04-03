@@ -1,0 +1,51 @@
+# ─── MCP Protocol ────────────────────────────────────────────────────────────
+# mcp>=1.0.0 — pre-1.0 had breaking changes to the discovery schema
+mcp>=1.0.0,<2.0.0
+
+# ─── Web framework ───────────────────────────────────────────────────────────
+fastapi>=0.111.0,<0.112.0
+uvicorn[standard]>=0.29.0,<0.30.0
+
+# ─── Data validation ─────────────────────────────────────────────────────────
+pydantic>=2.7.0,<3.0.0
+pydantic-settings>=2.3.0,<3.0.0
+
+# ─── YAML parsing ────────────────────────────────────────────────────────────
+# PyYAML — tool registry is YAML-based
+pyyaml>=6.0.1,<7.0.0
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+# PyJWT — HS256 local signing. cryptography backend required for RS256 if needed later.
+PyJWT>=2.8.0,<3.0.0
+
+# ─── LangGraph + LangChain ───────────────────────────────────────────────────
+langgraph>=0.2.0,<0.3.0
+langchain>=0.2.0,<0.3.0
+langchain-groq>=0.1.6,<0.2.0
+
+# ─── Web search ──────────────────────────────────────────────────────────────
+# duckduckgo-search — free, no API key, rate limit ~1 req/sec acceptable for demo
+duckduckgo-search>=6.1.0,<7.0.0
+
+# ─── HTTP client (agent calls MCP server) ────────────────────────────────────
+httpx>=0.27.0,<0.28.0
+
+# ─── UI ──────────────────────────────────────────────────────────────────────
+streamlit>=1.35.0,<2.0.0
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+pytest>=8.2.0,<9.0.0
+pytest-asyncio>=0.23.0,<0.24.0
+httpx>=0.27.0,<0.28.0  # also used as async test client for FastAPI
+
+# ─── Code quality ────────────────────────────────────────────────────────────
+black>=24.4.0,<25.0.0
+isort>=5.13.0,<6.0.0
+flake8>=7.0.0,<8.0.0
+detect-secrets>=1.4.0,<2.0.0
+
+# ─── [PRODUCTION] Azure — uncomment if deploying to Azure ────────────────────
+# azure-identity>=1.17.0,<2.0.0
+# azure-storage-blob>=12.20.0,<13.0.0
+# pyodbc>=5.1.0,<6.0.0
+# msal>=1.28.0,<2.0.0
