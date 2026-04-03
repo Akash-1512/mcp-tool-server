@@ -1,0 +1,50 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if MCP server exists
+        id: server_check
+        run: |
+          if [ -f "mcp_server/main.py" ]; then
+            echo "server_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "server_exists=false" >> $GITHUB_OUTPUT
+            echo "MCP server not yet implemented — skipping integration tests."
+          fi
+
+      - name: Copy env file
+        if: steps.server_check.outputs.server_exists == 'true'
+        run: cp .env.example .env
+
+      - name: Start services
+        if: steps.server_check.outputs.server_exists == 'true'
+        run: docker-compose -f deploy/docker-compose.ci.yml up --build -d
+
+      - name: Wait for MCP server health
+        if: steps.server_check.outputs.server_exists == 'true'
+        run: |
+          for i in {1..20}; do
+            curl -sf http://localhost:8000/health && break
+            echo "Waiting... ($i)"
+            sleep 3
+          done
+
+      - name: Run integration tests
+        if: steps.server_check.outputs.server_exists == 'true'
+        run: |
+          pip install pytest httpx python-dotenv
+          pytest tests/integration/ -v
+
+      - name: Tear down
+        if: always() && steps.server_check.outputs.server_exists == 'true'
+        run: docker-compose -f deploy/docker-compose.ci.yml down -v

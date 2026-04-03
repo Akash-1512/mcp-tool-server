@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.4.4
+      - name: Lint (skip if no Python files)
+        run: |
+          FILES=$(find . -name "*.py" -not -path "./.venv/*" -not -path "./venv/*")
+          if [ -z "$FILES" ]; then
+            echo "No Python files found — skipping lint."
+          else
+            ruff check $FILES
+            ruff format --check $FILES
+          fi
