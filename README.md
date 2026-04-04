@@ -58,6 +58,9 @@ make run-ui
 
 ## What I Tried That Didn't Work
 
-> Honest section — at least one entry required before v1.0.0.
-
-- [ ] TBD
+- **DuckDuckGo retry with same session:** First retry attempt reused the same
+  DDGS() instance after a RatelimitException. The internal state is poisoned
+  after a rate limit hit — the library raises DuckDuckGoSearchException on the
+  next call regardless of sleep duration. Fixed by creating a fresh DDGS()
+  instance for the retry. Still blocked by IP-level throttling during sustained
+  development testing — production path is Azure Bing Search.
