@@ -16,8 +16,16 @@
 
 ## DuckDuckGo vs Azure Bing Search
 
-> TBD — added at Phase 2, Step 2.3
+**Chose:** DuckDuckGo free API for local demo
+**Reason:** Zero cost, no API key, no Azure subscription needed for demo
+**Production path:** Azure Bing Search — AZURE_BING_SEARCH_KEY swap, no logic changes
+**What you give up:** No SLA, aggressive IP-level rate limiting during development,
+primp browser impersonation profiles missing in duckduckgo-search v6.4.2 causing
+random UA selection which contributes to throttling
 
 ## Groq vs Azure OpenAI
 
-> TBD — added at Phase 4
+**Chose:** Groq free tier (llama3-8b-8192) for local demo
+**Reason:** Zero cost, fast inference, no Azure subscription needed
+**Production path:** Azure OpenAI GPT-4o — uncomment block in agent/langgraph_agent.py
+**What you give up:** Groq free tier has rate limits and no guaranteed uptime SLA
