@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# tool_registry.yaml — declarative tool definitions
+# Adding a new tool: add an entry here + implement the handler function.
+# No changes to server routing logic required.
+# ─────────────────────────────────────────────────────────────────────────────
+
+tools:
+
+  - name: sql_query_tool
+    description: >
+      Execute a read-only SQL SELECT query against the IT Asset Management
+      database. Tables available: employees, assets, licenses, support_tickets.
+      Only SELECT statements are permitted — INSERT, UPDATE, DELETE, DROP will
+      be rejected. Returns results as a JSON array of objects.
+    handler: mcp_server.tool_handlers.sql_tool.handle_sql_query
+    input:
+      properties:
+        query:
+          type: string
+          description: >
+            A valid SQL SELECT statement. Example:
+            SELECT name, status FROM assets WHERE status = 'available'
+      required:
+        - query
+
+  - name: file_search_tool
+    description: >
+      Search for files in the enterprise document store by keyword.
+      Searches both file names and file content. Returns matching file
+      names, a content preview (first 200 chars of matching lines),
+      and the file path. Searches the data/files/ directory.
+    handler: mcp_server.tool_handlers.file_search_tool.handle_file_search
+    input:
+      properties:
+        keyword:
+          type: string
+          description: >
+            Keyword or phrase to search for. Case-insensitive.
+            Example: 'license expiry' or 'high priority'
+      required:
+        - keyword
+
+  - name: web_search_tool
+    description: >
+      Search the web using DuckDuckGo for current information not available
+      in the local database. Use this for vendor information, technology
+      comparisons, pricing lookups, or any query requiring up-to-date
+      external data. Returns top 5 results with title, URL, and snippet.
+    handler: mcp_server.tool_handlers.web_search_tool.handle_web_search
+    input:
+      properties:
+        query:
+          type: string
+          description: >
+            Search query string. Be specific for better results.
+            Example: 'Datadog Pro renewal pricing 2024'
+        max_results:
+          type: integer
+          description: >
+            Number of results to return. Defaults to 5, maximum 10.
+      required:
+        - query
