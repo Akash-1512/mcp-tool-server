@@ -165,3 +165,85 @@ async def tools_list() -> JSONResponse:
     )
 
     return JSONResponse(content=discovery_response.model_dump())
+
+# ─── MCP Tool Dispatch Endpoint ───────────────────────────────────────────────
+# Called by the agent to execute a specific tool with given arguments.
+# Looks up the handler in the registry, calls it, returns MCP result.
+
+from mcp_server.exceptions import ToolExecutionError, ToolNotFoundError
+from mcp_server.models import (
+    ToolResultContent,
+    ToolsCallRequest,
+    ToolsCallResponse,
+    ToolsCallResult,
+)
+from mcp_server.registry.registry_loader import get_tool
+
+
+@app.post("/tools/call")
+async def tools_call(request: ToolsCallRequest) -> JSONResponse:
+    """MCP tools/call dispatch endpoint.
+
+    Receives a tool name and arguments, looks up the registered handler,
+    executes it with the provided arguments, and returns an MCP-compliant
+    ToolsCallResponse.
+
+    Tool execution errors are returned as isError: true in the response
+    body — not as HTTP error codes. This is required by the MCP spec.
+
+    Auth middleware applied in Step 3.4 — not yet active.
+    """
+    tool_name = request.params.name
+    tool_arguments = request.params.arguments
+
+    # ── Lookup ────────────────────────────────────────────────────────────────
+    try:
+        _tool_entry, handler = get_tool(tool_name)
+    except KeyError:
+        raise ToolNotFoundError(tool_name)
+
+    # ── Execute ───────────────────────────────────────────────────────────────
+    try:
+        tool_result_text = await handler(tool_arguments)
+    except ToolExecutionError as e:
+        # Known execution error — return as MCP isError response
+        tool_call_response = ToolsCallResponse(
+            id=request.id,
+            result=ToolsCallResult(
+                content=[ToolResultContent(type="text", text=e.message)],
+                isError=True,
+            ),
+        )
+        return JSONResponse(content=tool_call_response.model_dump())
+    except Exception as e:
+        # Unexpected error from handler — log and return as MCP isError
+        # FIXME: add structured logging with request id and tool name here
+        logger.error(
+            "Unexpected error in tool '%s': %s: %s",
+            tool_name,
+            type(e).__name__,
+            e,
+        )
+        tool_call_response = ToolsCallResponse(
+            id=request.id,
+            result=ToolsCallResult(
+                content=[
+                    ToolResultContent(
+                        type="text",
+                        text=f"Unexpected error in tool '{tool_name}': {type(e).__name__}",
+                    )
+                ],
+                isError=True,
+            ),
+        )
+        return JSONResponse(content=tool_call_response.model_dump())
+
+    # ── Success ───────────────────────────────────────────────────────────────
+    tool_call_response = ToolsCallResponse(
+        id=request.id,
+        result=ToolsCallResult(
+            content=[ToolResultContent(type="text", text=tool_result_text)],
+            isError=False,
+        ),
+    )
+    return JSONResponse(content=tool_call_response.model_dump())
