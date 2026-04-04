@@ -112,3 +112,56 @@ async def mcp_tool_server_error_handler(
         status_code=200,
         content=mcp_error_response.model_dump(),
     )
+
+# ─── MCP Tool Discovery Endpoint ─────────────────────────────────────────────
+# Called by the LangGraph agent at startup to discover all available tools.
+# Returns the full MCP-compliant tools/list response.
+
+from mcp_server.models import (
+    ToolDefinition,
+    ToolInputSchema,
+    ToolsListResponse,
+    ToolsListResult,
+)
+from mcp_server.registry.registry_loader import list_tools
+
+
+@app.post("/tools/list")
+async def tools_list() -> JSONResponse:
+    """MCP tools/list discovery endpoint.
+
+    Returns all registered tools with their names, descriptions, and
+    input schemas. The LangGraph agent calls this once at startup and
+    builds its tool list from the response — no hardcoded tool names
+    anywhere in the agent code.
+
+    Auth middleware applied in Step 3.4 — not yet active.
+    """
+    registry_entries = list_tools()
+
+    tool_definitions = [
+        ToolDefinition(
+            name=entry.name,
+            description=entry.description,
+            inputSchema=ToolInputSchema(
+                type="object",
+                properties={
+                    param_name: {
+                        "type": param_schema.type,
+                        "description": param_schema.description,
+                        **({"enum": param_schema.enum} if param_schema.enum else {}),
+                    }
+                    for param_name, param_schema in entry.input.properties.items()
+                },
+                required=entry.input.required,
+            ),
+        )
+        for entry in registry_entries
+    ]
+
+    discovery_response = ToolsListResponse(
+        id=1,
+        result=ToolsListResult(tools=tool_definitions),
+    )
+
+    return JSONResponse(content=discovery_response.model_dump())
