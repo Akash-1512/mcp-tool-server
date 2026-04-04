@@ -69,9 +69,23 @@ async def handle_web_search(arguments: dict) -> str:
         max_results,
     )
 
+    import time
+    from duckduckgo_search.exceptions import RatelimitException
+
     try:
         with DDGS() as ddgs:
             raw_results = list(ddgs.text(query, max_results=max_results))
+    except RatelimitException:
+        logger.warning("DuckDuckGo rate limit hit — retrying with fresh session after 5s")
+        time.sleep(5)
+        try:
+            with DDGS() as ddgs_retry:
+                raw_results = list(ddgs_retry.text(query, max_results=max_results))
+        except RatelimitException as e:
+            raise ToolExecutionError(
+                tool_name="web_search_tool",
+                message="DuckDuckGo rate limit exceeded after retry — try again in a few seconds",
+            ) from e
     except Exception as e:
         raise ToolExecutionError(
             tool_name="web_search_tool",
