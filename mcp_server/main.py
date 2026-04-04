@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from mcp_server.exceptions import RegistryLoadError
 from mcp_server.registry.registry_loader import load_registry
+from mcp_server.auth.jwt_middleware import extract_bearer_token, verify_token
 
 logging.basicConfig(
     level=logging.INFO,
@@ -127,16 +128,16 @@ from mcp_server.registry.registry_loader import list_tools
 
 
 @app.post("/tools/list")
-async def tools_list() -> JSONResponse:
+async def tools_list(request: Request) -> JSONResponse:
     """MCP tools/list discovery endpoint.
 
     Returns all registered tools with their names, descriptions, and
     input schemas. The LangGraph agent calls this once at startup and
     builds its tool list from the response — no hardcoded tool names
     anywhere in the agent code.
-
-    Auth middleware applied in Step 3.4 — not yet active.
     """
+    token = extract_bearer_token(request)
+    verify_token(token)
     registry_entries = list_tools()
 
     tool_definitions = [
@@ -181,7 +182,7 @@ from mcp_server.registry.registry_loader import get_tool
 
 
 @app.post("/tools/call")
-async def tools_call(request: ToolsCallRequest) -> JSONResponse:
+async def tools_call(request: ToolsCallRequest, request_raw: Request) -> JSONResponse:
     """MCP tools/call dispatch endpoint.
 
     Receives a tool name and arguments, looks up the registered handler,
@@ -190,9 +191,9 @@ async def tools_call(request: ToolsCallRequest) -> JSONResponse:
 
     Tool execution errors are returned as isError: true in the response
     body — not as HTTP error codes. This is required by the MCP spec.
-
-    Auth middleware applied in Step 3.4 — not yet active.
     """
+    token = extract_bearer_token(request_raw)
+    verify_token(token)
     tool_name = request.params.name
     tool_arguments = request.params.arguments
 
