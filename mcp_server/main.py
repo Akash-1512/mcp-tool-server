@@ -54,3 +54,61 @@ app = FastAPI(
 @app.get("/health")
 async def health_check() -> JSONResponse:
     return JSONResponse(content={"status": "ok", "service": "mcp-tool-server"})
+
+# ─── Exception Handlers ───────────────────────────────────────────────────────
+# These catch exceptions raised anywhere in the request lifecycle and convert
+# them into correct MCP or HTTP responses.
+
+from fastapi import Request
+from mcp_server.exceptions import (
+    AuthenticationError,
+    MCPToolServerError,
+    ToolNotFoundError,
+)
+from mcp_server.models import MCPError, MCPErrorResponse
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_error_handler(
+    request: Request, exc: AuthenticationError
+) -> JSONResponse:
+    # Auth errors return HTTP 401 — not an MCP-level error response
+    return JSONResponse(
+        status_code=401,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(ToolNotFoundError)
+async def tool_not_found_handler(
+    request: Request, exc: ToolNotFoundError
+) -> JSONResponse:
+    mcp_error_response = MCPErrorResponse(
+        id=None,
+        error=MCPError(
+            code=exc.mcp_error_code,
+            message=exc.message,
+        ),
+    )
+    return JSONResponse(
+        status_code=200,  # MCP errors return HTTP 200 — error is in the body
+        content=mcp_error_response.model_dump(),
+    )
+
+
+@app.exception_handler(MCPToolServerError)
+async def mcp_tool_server_error_handler(
+    request: Request, exc: MCPToolServerError
+) -> JSONResponse:
+    # Catches any MCPToolServerError not handled by a more specific handler above
+    mcp_error_response = MCPErrorResponse(
+        id=None,
+        error=MCPError(
+            code=exc.mcp_error_code,
+            message=exc.message,
+        ),
+    )
+    return JSONResponse(
+        status_code=200,
+        content=mcp_error_response.model_dump(),
+    )
