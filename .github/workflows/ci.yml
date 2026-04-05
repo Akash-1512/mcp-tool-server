@@ -1,0 +1,43 @@
+name: CI — Lint and Unit Tests
+
+on:
+  push:
+    branches: [develop, "feat/**", "fix/**", "chore/**", "ci/**"]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          flake8 mcp_server/ agent/ ui/ \
+            --max-line-length=100 \
+            --exclude=__pycache__,.venv
+
+      - name: Seed test database
+        run: |
+          python -c "
+          import sqlite3, pathlib
+          conn = sqlite3.connect('data/enterprise.db')
+          conn.executescript(pathlib.Path('data/seed.sql').read_text())
+          conn.commit()
+          conn.close()
+          print('Database seeded')
+          "
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --tb=short
