@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # LOCAL DEMO — Groq free tier
 agent_llm = ChatGroq(
-    model="llama3-8b-8192",
+    model="llama-3.1-8b-instant",
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0,
     max_retries=2,
@@ -41,17 +41,23 @@ agent_llm = ChatGroq(
 
 
 def _build_mcp_tool(tool_definition: dict) -> StructuredTool:
-    """Build a LangChain StructuredTool from an MCP tool definition.
-
-    The tool's __call__ sends a tools/call request to the MCP server
-    and returns the result text. This is how the agent executes tools
-    without knowing their implementation details.
-    """
     tool_name = tool_definition["name"]
     tool_description = tool_definition["description"]
     input_schema = tool_definition.get("inputSchema", {})
     properties = input_schema.get("properties", {})
     required = input_schema.get("required", [])
+
+    # Build a dynamic Pydantic model so LangChain passes correct args to LLM
+    from pydantic import BaseModel, Field, create_model
+    field_definitions = {}
+    for param_name, param_info in properties.items():
+        description = param_info.get("description", "")
+        if param_name in required:
+            field_definitions[param_name] = (str, Field(description=description))
+        else:
+            field_definitions[param_name] = (str, Field(default="", description=description))
+
+    DynamicArgsSchema = create_model(f"{tool_name}_args", **field_definitions)
 
     def call_mcp_tool(**kwargs) -> str:
         token = generate_token(subject="langgraph-agent")
@@ -79,26 +85,17 @@ def _build_mcp_tool(tool_definition: dict) -> StructuredTool:
         result = mcp_response.get("result", {})
         content = result.get("content", [])
         is_error = result.get("isError", False)
-
         result_text = content[0].get("text", "") if content else ""
 
         if is_error:
             return f"Tool error: {result_text}"
         return result_text
 
-    # Build args schema from MCP inputSchema properties
-    from langchain_core.tools import tool as tool_decorator
-    args_schema_fields = {}
-    for param_name, param_info in properties.items():
-        args_schema_fields[param_name] = (
-            str,
-            param_info.get("description", ""),
-        )
-
     return StructuredTool.from_function(
         func=call_mcp_tool,
         name=tool_name,
         description=tool_description,
+        args_schema=DynamicArgsSchema,
     )
 
 
@@ -108,12 +105,39 @@ def build_agent():
     mcp_tools = [_build_mcp_tool(td) for td in tool_definitions]
     llm_with_tools = agent_llm.bind_tools(mcp_tools)
 
-    def agent_node(state: AgentState) -> dict:
-        response = llm_with_tools.invoke(state["messages"])
-        return {"messages": [response]}
+    from langchain_core.messages import SystemMessage
 
+    system_message = SystemMessage(content=(
+        "You are an IT asset management assistant. "
+        "Use the sql_query_tool to query the database. "
+        "After getting results, IMMEDIATELY provide a clear final answer to the user. "
+        "Do NOT call tools more than twice per query. "
+        "Do NOT repeat tool calls with the same arguments."
+    ))
+
+    def agent_node(state: AgentState) -> dict:
+        messages = [system_message] + state["messages"]
+        response = llm_with_tools.invoke(messages)
+        return {
+            "messages": [response],
+            "tool_call_count": state.get("tool_call_count", 0) + 1,
+        }
+
+    def synthesize_node(state: AgentState) -> dict:
+        """Force a final answer from the LLM without tools."""
+        
+        synthesis_prompt = SystemMessage(content=(
+            "Based on the tool results above, provide a clear and concise "
+            "final answer to the user's question. Do not call any more tools."
+        ))
+        messages = [synthesis_prompt] + state["messages"]
+        response = agent_llm.invoke(messages)
+        return {"messages": [response]}
+    
     def should_continue(state: AgentState) -> str:
         last_message = state["messages"][-1]
+        if state.get("tool_call_count", 0) >= 3:
+            return "synthesize"
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools"
         return END
@@ -123,11 +147,16 @@ def build_agent():
     graph = StateGraph(AgentState)
     graph.add_node("agent", agent_node)
     graph.add_node("tools", tool_node)
+    graph.add_node("synthesize", synthesize_node)
     graph.set_entry_point("agent")
-    graph.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
+    graph.add_conditional_edges(
+        "agent", should_continue,
+        {"tools": "tools", "synthesize": "synthesize", END: END}
+    )
     graph.add_edge("tools", "agent")
+    graph.add_edge("synthesize", END)
 
-    return graph.compile(), tool_definitions
+    return graph.compile(checkpointer=None), tool_definitions
 
 
 if __name__ == "__main__":
@@ -139,11 +168,15 @@ if __name__ == "__main__":
     query = "Which assets are currently available for assignment?"
     print(f"\nQuery: {query}\n")
 
-    result = agent.invoke({
-        "messages": [HumanMessage(content=query)],
-        "tool_call_trace": [],
-        "discovered_tools": discovered,
-    })
+    result = agent.invoke(
+        {
+            "messages": [HumanMessage(content=query)],
+            "tool_call_trace": [],
+            "discovered_tools": discovered,
+            "tool_call_count": 0,
+        },
+        config={"recursion_limit": 25},
+    )
 
     final_message = result["messages"][-1]
     print("Agent response:")

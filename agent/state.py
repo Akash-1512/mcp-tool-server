@@ -16,8 +16,11 @@ class AgentState(TypedDict):
                      with keys: tool_name, arguments, result, is_error.
     discovered_tools: list of tool definitions received from /tools/list
                       at startup — stored in state for inspection/logging.
+    tool_call_count: number of tool calls made this invocation — used to
+                     force END after 3 calls to prevent infinite loops.
     """
 
     messages: Annotated[list, add_messages]
     tool_call_trace: list[dict[str, Any]]
     discovered_tools: list[dict[str, Any]]
+    tool_call_count: int
