@@ -39,6 +39,7 @@ _MAX_RESULTS_CEILING = 10
 
 # ─── Handler ──────────────────────────────────────────────────────────────────
 
+
 async def handle_web_search(arguments: dict) -> str:
     """Search the web via DuckDuckGo and return top results as JSON.
 
@@ -70,6 +71,7 @@ async def handle_web_search(arguments: dict) -> str:
     )
 
     import time
+
     from duckduckgo_search.exceptions import RatelimitException
 
     try:

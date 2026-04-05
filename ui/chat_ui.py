@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import pathlib
+import sys
 
 import streamlit as st
 from langchain_core.messages import HumanMessage
 
-import sys
-import pathlib
 # Add project root to path so 'agent' and 'mcp_server' modules are importable
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
@@ -31,11 +31,13 @@ if "agent" not in st.session_state:
 
 # ─── Agent Initialisation ─────────────────────────────────────────────────────
 
+
 @st.cache_resource
 def load_agent():
     """Load the LangGraph agent once — cached across reruns."""
     os.environ.setdefault("MCP_SERVER_URL", "http://localhost:8003")
     from agent.langgraph_agent import build_agent
+
     return build_agent()
 
 
@@ -109,11 +111,13 @@ if prompt := st.chat_input("Ask about your IT assets..."):
         st.error("Agent not connected. Is the MCP server running?")
     else:
         # Show user message
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt,
-            "trace": [],
-        })
+        st.session_state.chat_history.append(
+            {
+                "role": "user",
+                "content": prompt,
+                "trace": [],
+            }
+        )
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -141,8 +145,10 @@ if prompt := st.chat_input("Ask about your IT assets..."):
                     if not response_text:
                         # Fallback — extract tool results directly from messages
                         from langchain_core.messages import ToolMessage
+
                         tool_texts = [
-                            msg.content for msg in result["messages"]
+                            msg.content
+                            for msg in result["messages"]
                             if isinstance(msg, ToolMessage) and msg.content
                         ]
                         if tool_texts:
@@ -169,17 +175,21 @@ if prompt := st.chat_input("Ask about your IT assets..."):
                                     except (json.JSONDecodeError, TypeError):
                                         st.text(str(call.get("result", ""))[:500])
 
-                    st.session_state.chat_history.append({
-                        "role": "assistant",
-                        "content": response_text,
-                        "trace": tool_trace,
-                    })
+                    st.session_state.chat_history.append(
+                        {
+                            "role": "assistant",
+                            "content": response_text,
+                            "trace": tool_trace,
+                        }
+                    )
 
                 except Exception as e:
                     error_msg = f"Agent error: {type(e).__name__}: {e}"
                     st.error(error_msg)
-                    st.session_state.chat_history.append({
-                        "role": "assistant",
-                        "content": error_msg,
-                        "trace": [],
-                    })
+                    st.session_state.chat_history.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "trace": [],
+                        }
+                    )

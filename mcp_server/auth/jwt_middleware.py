@@ -68,11 +68,9 @@ def extract_bearer_token(request: Request) -> str:
     if not auth_header:
         raise AuthenticationError("Authorization header is missing")
     if not auth_header.startswith("Bearer "):
-        raise AuthenticationError(
-            "Authorization header must use Bearer scheme: 'Bearer <token>'"
-        )
+        raise AuthenticationError("Authorization header must use Bearer scheme: 'Bearer <token>'")
 
-    token = auth_header[len("Bearer "):].strip()
+    token = auth_header[len("Bearer ") :].strip()
     if not token:
         raise AuthenticationError("Bearer token is empty")
     return token

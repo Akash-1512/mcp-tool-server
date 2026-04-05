@@ -25,6 +25,7 @@ _FILES_DIR = pathlib.Path(__file__).parent.parent.parent / "data" / "files"
 
 # ─── Handler ──────────────────────────────────────────────────────────────────
 
+
 async def handle_file_search(arguments: dict) -> str:
     """Search data/files/ for files matching a keyword in name or content.
 
@@ -59,10 +60,8 @@ async def handle_file_search(arguments: dict) -> str:
         if not file_path.is_file():
             continue
 
-        # Search filename
         filename_match = keyword_lower in file_path.name.lower()
 
-        # Search file content line by line
         try:
             file_content = file_path.read_text(encoding="utf-8", errors="ignore")
         except OSError as e:
@@ -70,20 +69,23 @@ async def handle_file_search(arguments: dict) -> str:
             continue
 
         matched_lines = [
-            line.strip()
-            for line in file_content.splitlines()
-            if keyword_lower in line.lower()
+            line.strip() for line in file_content.splitlines() if keyword_lower in line.lower()
         ]
 
         if filename_match or matched_lines:
-            file_search_results.append({
-                "file_name": file_path.name,
-                "file_path": str(file_path.relative_to(
-                    pathlib.Path(__file__).parent.parent.parent
-                )),
-                "matched_lines": matched_lines[:5],  # cap at 5 lines per file
-                "preview": matched_lines[0][:200] if matched_lines else f"Filename match: {file_path.name}",
-            })
+            preview = (
+                matched_lines[0][:200] if matched_lines else f"Filename match: {file_path.name}"
+            )
+            file_search_results.append(
+                {
+                    "file_name": file_path.name,
+                    "file_path": str(
+                        file_path.relative_to(pathlib.Path(__file__).parent.parent.parent)
+                    ),
+                    "matched_lines": matched_lines[:5],
+                    "preview": preview,
+                }
+            )
 
     logger.info(
         "file_search_tool found %d matching files for keyword '%s'",

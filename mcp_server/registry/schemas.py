@@ -27,15 +27,11 @@ class ToolInputDefinition(BaseModel):
 
     @field_validator("required")
     @classmethod
-    def required_fields_must_exist_in_properties(
-        cls, required: list[str], info: any
-    ) -> list[str]:
+    def required_fields_must_exist_in_properties(cls, required: list[str], info: any) -> list[str]:
         properties = info.data.get("properties", {})
         missing = [f for f in required if f not in properties]
         if missing:
-            raise ValueError(
-                f"Required fields {missing} not found in properties"
-            )
+            raise ValueError(f"Required fields {missing} not found in properties")
         return required
 
 
@@ -49,12 +45,8 @@ class RegistryToolEntry(BaseModel):
 
     name: str = Field(description="Unique tool identifier")
     description: str = Field(description="Human-readable description for the LLM")
-    handler: str = Field(
-        description="Dotted Python path to the async handler function"
-    )
-    input: ToolInputDefinition = Field(
-        description="Input schema defining accepted parameters"
-    )
+    handler: str = Field(description="Dotted Python path to the async handler function")
+    input: ToolInputDefinition = Field(description="Input schema defining accepted parameters")
 
 
 class ToolRegistry(BaseModel):
