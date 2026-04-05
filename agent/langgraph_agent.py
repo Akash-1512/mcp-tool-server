@@ -108,11 +108,21 @@ def build_agent():
     from langchain_core.messages import SystemMessage
 
     system_message = SystemMessage(content=(
-        "You are an IT asset management assistant. "
-        "Use the sql_query_tool to query the database. "
-        "After getting results, IMMEDIATELY provide a clear final answer to the user. "
-        "Do NOT call tools more than twice per query. "
-        "Do NOT repeat tool calls with the same arguments."
+        "You are an IT asset management assistant with access to a SQLite database.\n\n"
+        "EXACT TABLE SCHEMAS:\n"
+        "employees(employee_id, name, department, location, email, manager_id)\n"
+        "assets(asset_id, name, category, status, assigned_to, purchase_date, cost_usd)\n"
+        "licenses(license_id, software_name, vendor, seats_total, seats_used, expiry_date, cost_usd)\n"
+        "support_tickets(ticket_id, asset_id, raised_by, priority, status, issue, created_at, resolved_at)\n\n"
+        "EXAMPLE CORRECT JOIN QUERY:\n"
+        "SELECT employees.name, employees.department, support_tickets.priority, support_tickets.status\n"
+        "FROM support_tickets\n"
+        "JOIN employees ON support_tickets.raised_by = employees.employee_id\n"
+        "WHERE support_tickets.priority = 'high' AND support_tickets.status = 'open'\n\n"
+        "RULES:\n"
+        "1. Always write full table.column names in JOINs — never use short aliases like t. or e.\n"
+        "2. After getting results, answer directly in plain English.\n"
+        "3. Only SELECT statements allowed.\n"
     ))
 
     def agent_node(state: AgentState) -> dict:
@@ -125,13 +135,21 @@ def build_agent():
 
     def synthesize_node(state: AgentState) -> dict:
         """Force a final answer from the LLM without tools."""
-        
+        from langchain_core.messages import ToolMessage
+        # Collect tool results from message history for context
+        tool_results = [
+            msg.content for msg in state["messages"]
+            if isinstance(msg, ToolMessage) and msg.content
+        ]
+        tool_context = "\n".join(tool_results) if tool_results else "No tool results available."
+
         synthesis_prompt = SystemMessage(content=(
-            "Based on the tool results above, provide a clear and concise "
-            "final answer to the user's question. Do not call any more tools."
+            f"You are an IT asset management assistant. "
+            f"The following data was retrieved from the database:\n\n{tool_context}\n\n"
+            f"Using ONLY this data, answer the user's question directly and concisely. "
+            f"Do not call any tools. Do not say you cannot answer."
         ))
-        messages = [synthesis_prompt] + state["messages"]
-        response = agent_llm.invoke(messages)
+        response = agent_llm.invoke([synthesis_prompt] + state["messages"])
         return {"messages": [response]}
     
     def should_continue(state: AgentState) -> str:

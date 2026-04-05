@@ -7,6 +7,11 @@ import os
 import streamlit as st
 from langchain_core.messages import HumanMessage
 
+import sys
+import pathlib
+# Add project root to path so 'agent' and 'mcp_server' modules are importable
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+
 # Must be first Streamlit call
 st.set_page_config(
     page_title="MCP Enterprise Tool Server",
@@ -126,8 +131,24 @@ if prompt := st.chat_input("Ask about your IT assets..."):
                         config={"recursion_limit": 25},
                     )
 
-                    final_message = result["messages"][-1]
-                    response_text = final_message.content or "No response generated."
+                    # Find last message with non-empty content
+                    response_text = ""
+                    for msg in reversed(result["messages"]):
+                        content = getattr(msg, "content", "")
+                        if content and isinstance(content, str) and content.strip():
+                            response_text = content
+                            break
+                    if not response_text:
+                        # Fallback — extract tool results directly from messages
+                        from langchain_core.messages import ToolMessage
+                        tool_texts = [
+                            msg.content for msg in result["messages"]
+                            if isinstance(msg, ToolMessage) and msg.content
+                        ]
+                        if tool_texts:
+                            response_text = "**Tool results:**\n" + "\n\n".join(tool_texts)
+                        else:
+                            response_text = "Agent completed but produced no text response."
                     tool_trace = result.get("tool_call_trace", [])
 
                     st.markdown(response_text)
