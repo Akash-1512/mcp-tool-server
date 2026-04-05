@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import pathlib
 import sqlite3
 
@@ -26,10 +25,7 @@ def get_db_connection() -> sqlite3.Connection:
     if not _DB_PATH.exists():
         raise ToolExecutionError(
             tool_name="sql_query_tool",
-            message=(
-                f"Database not found at {_DB_PATH}. "
-                "Run 'make seed-db' to generate it."
-            ),
+            message=(f"Database not found at {_DB_PATH}. " "Run 'make seed-db' to generate it."),
         )
     conn = sqlite3.connect(str(_DB_PATH))
     conn.row_factory = sqlite3.Row
@@ -75,6 +71,7 @@ def _validate_select_only(query: str) -> None:
 
 # ─── Handler ─────────────────────────────────────────────────────────────────
 
+
 async def handle_sql_query(arguments: dict) -> str:
     """Execute a read-only SQL SELECT against the IT asset management database.
 
@@ -102,9 +99,7 @@ async def handle_sql_query(arguments: dict) -> str:
         try:
             cursor = conn.execute(sql_query)
             columns = [description[0] for description in cursor.description]
-            sql_query_result = [
-                dict(zip(columns, row)) for row in cursor.fetchall()
-            ]
+            sql_query_result = [dict(zip(columns, row)) for row in cursor.fetchall()]
         finally:
             conn.close()
     except sqlite3.OperationalError as e:

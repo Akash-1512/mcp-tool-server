@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-
 # ─── Base Exception ───────────────────────────────────────────────────────────
+
 
 class MCPToolServerError(Exception):
     """Root exception for all mcp-tool-server errors.
@@ -22,6 +22,7 @@ class MCPToolServerError(Exception):
 
 # ─── Auth Exceptions ─────────────────────────────────────────────────────────
 
+
 class AuthenticationError(MCPToolServerError):
     """Raised when a JWT token is missing, expired, or has invalid signature.
 
@@ -35,6 +36,7 @@ class AuthenticationError(MCPToolServerError):
 
 # ─── Registry Exceptions ──────────────────────────────────────────────────────
 
+
 class RegistryLoadError(MCPToolServerError):
     """Raised when tool_registry.yaml fails to load or fails schema validation.
 
@@ -45,11 +47,12 @@ class RegistryLoadError(MCPToolServerError):
     def __init__(self, message: str) -> None:
         super().__init__(message, mcp_error_code=-32603)
 
+
 # ─── Tool Dispatch Exceptions ─────────────────────────────────────────────────
+
 
 class ToolNotFoundError(MCPToolServerError):
     """Raised when tools/call receives a tool name not in the registry.
-
     Maps to JSON-RPC -32601 (method not found). Returns isError: true
     in the MCP response body — not an HTTP error code.
     """
@@ -95,6 +98,7 @@ class ToolExecutionError(MCPToolServerError):
 
 # ─── SQL Tool Exceptions ──────────────────────────────────────────────────────
 
+
 class SQLQueryForbiddenError(ToolExecutionError):
     """Raised when sql_query_tool receives a non-SELECT statement.
 
@@ -106,7 +110,6 @@ class SQLQueryForbiddenError(ToolExecutionError):
         super().__init__(
             tool_name="sql_query_tool",
             message=(
-                f"Only SELECT statements are permitted. "
-                f"Received: {received_statement[:50]}"
+                f"Only SELECT statements are permitted. " f"Received: {received_statement[:50]}"
             ),
         )

@@ -38,9 +38,7 @@ def load_registry() -> None:
     try:
         raw_yaml = _REGISTRY_PATH.read_text(encoding="utf-8")
     except FileNotFoundError as e:
-        raise RegistryLoadError(
-            f"tool_registry.yaml not found at {_REGISTRY_PATH}"
-        ) from e
+        raise RegistryLoadError(f"tool_registry.yaml not found at {_REGISTRY_PATH}") from e
 
     try:
         raw_data = yaml.safe_load(raw_yaml)
@@ -104,14 +102,13 @@ def _import_handler(dotted_path: str, tool_name: str) -> Callable[..., Any]:
         ) from e
 
     if not callable(handler_callable):
-        raise RegistryLoadError(
-            f"Tool '{tool_name}' handler '{dotted_path}' is not callable"
-        )
+        raise RegistryLoadError(f"Tool '{tool_name}' handler '{dotted_path}' is not callable")
 
     return handler_callable
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────
+
 
 def get_tool(tool_name: str) -> tuple[RegistryToolEntry, Callable[..., Any]]:
     """Return the (RegistryToolEntry, handler) pair for a given tool name.

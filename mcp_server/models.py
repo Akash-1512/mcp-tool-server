@@ -32,10 +32,13 @@ class ToolDefinition(BaseModel):
     # TODO: MCP spec also supports 'annotations' for tool metadata (e.g. readOnly)
     # Not implemented — see https://spec.modelcontextprotocol.io/specification/tools
 
+
 # ─── MCP Request Models ───────────────────────────────────────────────────────
+
 
 class ToolsListRequest(BaseModel):
     """Incoming JSON-RPC request for tools/list discovery endpoint."""
+
     jsonrpc: str = Field(default="2.0")
     id: int | str = Field(description="JSON-RPC request ID — echoed back in response")
     method: str = Field(default="tools/list")
@@ -44,6 +47,7 @@ class ToolsListRequest(BaseModel):
 
 class ToolsCallRequest(BaseModel):
     """Incoming JSON-RPC request for tools/call dispatch endpoint."""
+
     jsonrpc: str = Field(default="2.0")
     id: int | str = Field(description="JSON-RPC request ID — echoed back in response")
     method: str = Field(default="tools/call")
@@ -52,6 +56,7 @@ class ToolsCallRequest(BaseModel):
 
 class ToolsCallParams(BaseModel):
     """The params block inside a tools/call request."""
+
     name: str = Field(description="Tool name — must match a registered tool")
     arguments: dict[str, Any] = Field(
         default_factory=dict,
@@ -61,14 +66,17 @@ class ToolsCallParams(BaseModel):
 
 # ─── MCP Response Models ──────────────────────────────────────────────────────
 
+
 class ToolResultContent(BaseModel):
     """A single content block inside a tool result."""
+
     type: str = Field(default="text")
     text: str = Field(description="Tool output as a string — JSON-serialised if structured")
 
 
 class ToolsListResponse(BaseModel):
     """Response returned by the tools/list discovery endpoint."""
+
     jsonrpc: str = Field(default="2.0")
     id: int | str
     result: ToolsListResult
@@ -80,6 +88,7 @@ class ToolsListResult(BaseModel):
 
 class ToolsCallResponse(BaseModel):
     """Response returned by the tools/call dispatch endpoint."""
+
     jsonrpc: str = Field(default="2.0")
     id: int | str
     result: ToolsCallResult

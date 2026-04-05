@@ -44,14 +44,10 @@ def discover_tools() -> list[dict]:
             "Is the server running? Run: python -m uvicorn mcp_server.main:app --port 8003"
         ) from e
     except httpx.TimeoutException as e:
-        raise RuntimeError(
-            f"MCP server at {MCP_SERVER_URL} timed out during tool discovery"
-        ) from e
+        raise RuntimeError(f"MCP server at {MCP_SERVER_URL} timed out during tool discovery") from e
 
     if response.status_code == 401:
-        raise RuntimeError(
-            "MCP server rejected agent token during discovery — check JWT_SECRET"
-        )
+        raise RuntimeError("MCP server rejected agent token during discovery — check JWT_SECRET")
 
     if response.status_code != 200:
         raise RuntimeError(

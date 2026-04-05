@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 
 import httpx
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 from langchain_groq import ChatGroq
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
+from pydantic import Field, create_model
 
 from agent.state import AgentState
 from agent.tool_discovery import MCP_SERVER_URL, discover_tools
@@ -48,14 +48,16 @@ def _build_mcp_tool(tool_definition: dict) -> StructuredTool:
     required = input_schema.get("required", [])
 
     # Build a dynamic Pydantic model so LangChain passes correct args to LLM
-    from pydantic import BaseModel, Field, create_model
     field_definitions = {}
     for param_name, param_info in properties.items():
         description = param_info.get("description", "")
         if param_name in required:
             field_definitions[param_name] = (str, Field(description=description))
         else:
-            field_definitions[param_name] = (str, Field(default="", description=description))
+            field_definitions[param_name] = (
+                str,
+                Field(default="", description=description),
+            )
 
     DynamicArgsSchema = create_model(f"{tool_name}_args", **field_definitions)
 
@@ -105,25 +107,29 @@ def build_agent():
     mcp_tools = [_build_mcp_tool(td) for td in tool_definitions]
     llm_with_tools = agent_llm.bind_tools(mcp_tools)
 
-    from langchain_core.messages import SystemMessage
-
-    system_message = SystemMessage(content=(
-        "You are an IT asset management assistant with access to a SQLite database.\n\n"
-        "EXACT TABLE SCHEMAS:\n"
-        "employees(employee_id, name, department, location, email, manager_id)\n"
-        "assets(asset_id, name, category, status, assigned_to, purchase_date, cost_usd)\n"
-        "licenses(license_id, software_name, vendor, seats_total, seats_used, expiry_date, cost_usd)\n"
-        "support_tickets(ticket_id, asset_id, raised_by, priority, status, issue, created_at, resolved_at)\n\n"
-        "EXAMPLE CORRECT JOIN QUERY:\n"
-        "SELECT employees.name, employees.department, support_tickets.priority, support_tickets.status\n"
-        "FROM support_tickets\n"
-        "JOIN employees ON support_tickets.raised_by = employees.employee_id\n"
-        "WHERE support_tickets.priority = 'high' AND support_tickets.status = 'open'\n\n"
-        "RULES:\n"
-        "1. Always write full table.column names in JOINs — never use short aliases like t. or e.\n"
-        "2. After getting results, answer directly in plain English.\n"
-        "3. Only SELECT statements allowed.\n"
-    ))
+    system_message = SystemMessage(
+        content=(
+            "You are an IT asset management assistant with access to a SQLite database.\n\n"
+            "EXACT TABLE SCHEMAS:\n"
+            "employees(employee_id, name, department, location, email, manager_id)\n"
+            "assets(asset_id, name, category, status, assigned_to, purchase_date, cost_usd)\n"
+            "licenses(license_id, software_name, vendor, "
+            "seats_total, seats_used, expiry_date, cost_usd)\n"
+            "support_tickets(ticket_id, asset_id, raised_by, "
+            "priority, status, issue, created_at, resolved_at)\n\n"
+            "EXAMPLE CORRECT JOIN QUERY:\n"
+            "SELECT employees.name, employees.department, "
+            "support_tickets.priority, support_tickets.status\n"
+            "FROM support_tickets\n"
+            "JOIN employees ON support_tickets.raised_by = employees.employee_id\n"
+            "WHERE support_tickets.priority = 'high' AND support_tickets.status = 'open'\n\n"
+            "RULES:\n"
+            "1. Always write full table.column names in JOINs — "
+            "never use short aliases like t. or e.\n"
+            "2. After getting results, answer directly in plain English.\n"
+            "3. Only SELECT statements allowed.\n"
+        )
+    )
 
     def agent_node(state: AgentState) -> dict:
         messages = [system_message] + state["messages"]
@@ -135,23 +141,21 @@ def build_agent():
 
     def synthesize_node(state: AgentState) -> dict:
         """Force a final answer from the LLM without tools."""
-        from langchain_core.messages import ToolMessage
-        # Collect tool results from message history for context
         tool_results = [
-            msg.content for msg in state["messages"]
-            if isinstance(msg, ToolMessage) and msg.content
+            msg.content for msg in state["messages"] if isinstance(msg, ToolMessage) and msg.content
         ]
         tool_context = "\n".join(tool_results) if tool_results else "No tool results available."
-
-        synthesis_prompt = SystemMessage(content=(
-            f"You are an IT asset management assistant. "
-            f"The following data was retrieved from the database:\n\n{tool_context}\n\n"
-            f"Using ONLY this data, answer the user's question directly and concisely. "
-            f"Do not call any tools. Do not say you cannot answer."
-        ))
+        synthesis_prompt = SystemMessage(
+            content=(
+                f"You are an IT asset management assistant. "
+                f"The following data was retrieved from the database:\n\n{tool_context}\n\n"
+                f"Using ONLY this data, answer the user's question directly and concisely. "
+                f"Do not call any tools. Do not say you cannot answer."
+            )
+        )
         response = agent_llm.invoke([synthesis_prompt] + state["messages"])
         return {"messages": [response]}
-    
+
     def should_continue(state: AgentState) -> str:
         last_message = state["messages"][-1]
         if state.get("tool_call_count", 0) >= 3:
@@ -168,8 +172,9 @@ def build_agent():
     graph.add_node("synthesize", synthesize_node)
     graph.set_entry_point("agent")
     graph.add_conditional_edges(
-        "agent", should_continue,
-        {"tools": "tools", "synthesize": "synthesize", END: END}
+        "agent",
+        should_continue,
+        {"tools": "tools", "synthesize": "synthesize", END: END},
     )
     graph.add_edge("tools", "agent")
     graph.add_edge("synthesize", END)
